@@ -46,8 +46,11 @@ import static com.alamkanak.weekview.WeekViewUtil.*;
 /**
  * Created by Raquib-ul-Alam Kanak on 7/21/2014.
  * Website: http://alamkanak.github.io/
+ *
+ * Edited by Frank on 25/1/2019 as part of Timetable-revamp for USThing
+ *
  */
-public class WeekView extends View {
+public class TimetableView extends View {
 
     private enum Direction {
         NONE, LEFT, RIGHT, VERTICAL
@@ -296,15 +299,15 @@ public class WeekView extends View {
         }
     };
 
-    public WeekView(Context context) {
+    public TimetableView(Context context) {
         this(context, null);
     }
 
-    public WeekView(Context context, AttributeSet attrs) {
+    public TimetableView(Context context, AttributeSet attrs) {
         this(context, attrs, 0);
     }
 
-    public WeekView(Context context, AttributeSet attrs, int defStyleAttr) {
+    public TimetableView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
 
         // Hold references.
