@@ -5,7 +5,7 @@ import java.util.Calendar;
 /**
  * Created by jesse on 6/02/2016.
  */
-public class WeekViewUtil {
+public class TimetableViewUtil {
 
 
     /////////////////////////////////////////////////////////////////

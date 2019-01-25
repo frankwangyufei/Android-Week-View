@@ -40,8 +40,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
-
-import static com.alamkanak.weekview.WeekViewUtil.*;
+import java.util.TimeZone;
 
 /**
  * Created by Raquib-ul-Alam Kanak on 7/21/2014.
@@ -52,6 +51,12 @@ import static com.alamkanak.weekview.WeekViewUtil.*;
  */
 public class TimetableView extends View {
 
+    public interface BoundaryHitListener{
+        void onTopBoundaryHit(Boolean hit);
+        void onBottomBoundaryHit(Boolean hit);
+        void onLeftBoundaryHit(Boolean hit);
+        void onRightBoundaryHit(Boolean hit);
+    }
     private enum Direction {
         NONE, LEFT, RIGHT, VERTICAL
     }
@@ -86,9 +91,9 @@ public class TimetableView extends View {
     private Paint mEventBackgroundPaint;
     private float mHeaderColumnWidth;
     private List<EventRect> mEventRects;
-    private List<? extends WeekViewEvent> mPreviousPeriodEvents;
-    private List<? extends WeekViewEvent> mCurrentPeriodEvents;
-    private List<? extends WeekViewEvent> mNextPeriodEvents;
+    private List<? extends TimetableViewEvent> mPreviousPeriodEvents;
+    private List<? extends TimetableViewEvent> mCurrentPeriodEvents;
+    private List<? extends TimetableViewEvent> mNextPeriodEvents;
     private TextPaint mEventTextPaint;
     private Paint mHeaderColumnBackgroundPaint;
     private int mFetchedPeriod = -1; // the middle period the calendar has fetched.
@@ -98,7 +103,7 @@ public class TimetableView extends View {
     private boolean mIsZooming;
     private Calendar mFirstVisibleDay;
     private Calendar mLastVisibleDay;
-    private boolean mShowFirstDayOfWeekFirst = false;
+    private boolean mShowFirstDayOfWeekFirst = true;
     private int mDefaultEventColor;
     private int mMinimumFlingVelocity = 0;
     private int mScaledTouchSlop = 0;
@@ -107,8 +112,8 @@ public class TimetableView extends View {
     private int mNewHourHeight = -1;
     private int mMinHourHeight = 0; //no minimum specified (will be dynamic, based on screen)
     private int mEffectiveMinHourHeight = mMinHourHeight; //compensates for the fact that you can't keep zooming out.
-    private int mMaxHourHeight = 250;
-    private int mColumnGap = 10;
+    private int mMaxHourHeight = 1000;
+    private int mColumnGap = 5;
     private int mFirstDayOfWeek = Calendar.MONDAY;
     private int mTextSize = 12;
     private int mHeaderColumnPadding = 10;
@@ -148,14 +153,30 @@ public class TimetableView extends View {
     private int mAllDayEventHeight = 100;
     private int mScrollDuration = 250;
 
+    // USThing custom members
+    private int startHour = 8;
+    private int endHour = 22;
+    private boolean showSaturday = false;
+
+    private int currentWeekday;
+
+    private boolean showIndicator = true;
+
+    private int mTimeBarColor = Color.parseColor("#000000");
+    private static final TimeZone HKT = TimeZone.getTimeZone("HKT");
+
     // Listeners.
     private EventClickListener mEventClickListener;
     private EventLongPressListener mEventLongPressListener;
-    private WeekViewLoader mWeekViewLoader;
+    private TimetableViewLoader mTimetableViewLoader;
     private EmptyViewClickListener mEmptyViewClickListener;
     private EmptyViewLongPressListener mEmptyViewLongPressListener;
     private DateTimeInterpreter mDateTimeInterpreter;
     private ScrollListener mScrollListener;
+    private InitListener mInitListener;
+
+    // USThing custom listeners
+    private BoundaryHitListener mBoundaryHitListener;
 
     private final GestureDetector.SimpleOnGestureListener mGestureListener = new GestureDetector.SimpleOnGestureListener() {
 
@@ -206,11 +227,11 @@ public class TimetableView extends View {
                 case LEFT:
                 case RIGHT:
                     mCurrentOrigin.x -= distanceX * mXScrollingSpeed;
-                    ViewCompat.postInvalidateOnAnimation(WeekView.this);
+                    ViewCompat.postInvalidateOnAnimation(TimetableView.this);
                     break;
                 case VERTICAL:
                     mCurrentOrigin.y -= distanceY;
-                    ViewCompat.postInvalidateOnAnimation(WeekView.this);
+                    ViewCompat.postInvalidateOnAnimation(TimetableView.this);
                     break;
             }
             return true;
@@ -240,7 +261,7 @@ public class TimetableView extends View {
                     break;
             }
 
-            ViewCompat.postInvalidateOnAnimation(WeekView.this);
+            ViewCompat.postInvalidateOnAnimation(TimetableView.this);
             return true;
         }
 
@@ -299,7 +320,28 @@ public class TimetableView extends View {
         }
     };
 
+    @Override
+    public void postInvalidateOnAnimation() {
+        super.postInvalidateOnAnimation();
+        if(mBoundaryHitListener == null) return;
+        mBoundaryHitListener.onTopBoundaryHit(mCurrentOrigin.y >= 0);
+        mBoundaryHitListener.onBottomBoundaryHit(mCurrentOrigin.y <= getMinY());
+    }
+
+    private int getMinY() {
+        return (int) -(mHourHeight * 24 + mHeaderHeight + mHeaderRowPadding * 2 + mHeaderMarginBottom + mTimeTextHeight / 2 - getHeight());
+    }
+
+    /***
+     * Created by Frank on 8/1/2018
+     * Stop any unfinished animation, apparently this fixed the issue of the Timetable's x coordinate from not resetting when the visible day is changed.
+     */
+    public void stopCurrentAnimation() {
+        mScroller.forceFinished(true);
+    }
+
     public TimetableView(Context context) {
+
         this(context, null);
     }
 
@@ -326,7 +368,6 @@ public class TimetableView extends View {
             mColumnGap = a.getDimensionPixelSize(R.styleable.WeekView_columnGap, mColumnGap);
             mHeaderColumnTextColor = a.getColor(R.styleable.WeekView_headerColumnTextColor, mHeaderColumnTextColor);
             mNumberOfVisibleDays = a.getInteger(R.styleable.WeekView_noOfVisibleDays, mNumberOfVisibleDays);
-            mShowFirstDayOfWeekFirst = a.getBoolean(R.styleable.WeekView_showFirstDayOfWeekFirst, mShowFirstDayOfWeekFirst);
             mHeaderRowPadding = a.getDimensionPixelSize(R.styleable.WeekView_headerRowPadding, mHeaderRowPadding);
             mHeaderRowBackgroundColor = a.getColor(R.styleable.WeekView_headerRowBackgroundColor, mHeaderRowBackgroundColor);
             mDayBackgroundColor = a.getColor(R.styleable.WeekView_dayBackgroundColor, mDayBackgroundColor);
@@ -354,8 +395,6 @@ public class TimetableView extends View {
             mShowNowLine = a.getBoolean(R.styleable.WeekView_showNowLine, mShowNowLine);
             mHorizontalFlingEnabled = a.getBoolean(R.styleable.WeekView_horizontalFlingEnabled, mHorizontalFlingEnabled);
             mVerticalFlingEnabled = a.getBoolean(R.styleable.WeekView_verticalFlingEnabled, mVerticalFlingEnabled);
-            mAllDayEventHeight = a.getDimensionPixelSize(R.styleable.WeekView_allDayEventHeight, mAllDayEventHeight);
-            mScrollDuration = a.getInt(R.styleable.WeekView_scrollDuration, mScrollDuration);
         } finally {
             a.recycle();
         }
@@ -364,6 +403,7 @@ public class TimetableView extends View {
     }
 
     private void init() {
+
         // Scrolling initialization.
         mGestureDetector = new GestureDetectorCompat(mContext, mGestureListener);
         mScroller = new OverScroller(mContext, new FastOutLinearInInterpolator());
@@ -379,7 +419,7 @@ public class TimetableView extends View {
         Rect rect = new Rect();
         mTimeTextPaint.getTextBounds("00 PM", 0, "00 PM".length(), rect);
         mTimeTextHeight = rect.height();
-        mHeaderMarginBottom = mTimeTextHeight / 2;
+        mHeaderMarginBottom = 0;
         initTextTimeWidth();
 
         // Measure settings for header row.
@@ -446,26 +486,6 @@ public class TimetableView extends View {
         // Set default event color.
         mDefaultEventColor = Color.parseColor("#9fc6e7");
 
-        mScaleDetector = new ScaleGestureDetector(mContext, new ScaleGestureDetector.OnScaleGestureListener() {
-            @Override
-            public void onScaleEnd(ScaleGestureDetector detector) {
-                mIsZooming = false;
-            }
-
-            @Override
-            public boolean onScaleBegin(ScaleGestureDetector detector) {
-                mIsZooming = true;
-                goToNearestOrigin();
-                return true;
-            }
-
-            @Override
-            public boolean onScale(ScaleGestureDetector detector) {
-                mNewHourHeight = Math.round(mHourHeight * detector.getScaleFactor());
-                invalidate();
-                return true;
-            }
-        });
     }
 
     // fix rotation changes
@@ -480,9 +500,9 @@ public class TimetableView extends View {
      */
     private void initTextTimeWidth() {
         mTimeTextWidth = 0;
-        for (int i = 0; i < 24; i++) {
+        for (int i = 0; i < endHour - startHour; i++) {
             // Measure time string and get max width.
-            String time = getDateTimeInterpreter().interpretTime(i);
+            String time = getDateTimeInterpreter().interpretTime(i + startHour);
             if (time == null)
                 throw new IllegalStateException("A DateTimeInterpreter must not return null time");
             mTimeTextWidth = Math.max(mTimeTextWidth, mTimeTextPaint.measureText(time));
@@ -536,11 +556,11 @@ public class TimetableView extends View {
         // Clip to paint in left column only.
         canvas.clipRect(0, mHeaderHeight + mHeaderRowPadding * 2, mHeaderColumnWidth, getHeight(), Region.Op.REPLACE);
 
-        for (int i = 0; i < 24; i++) {
+        for (int i = 0; i < endHour - startHour; i++) {
             float top = mHeaderHeight + mHeaderRowPadding * 2 + mCurrentOrigin.y + mHourHeight * i + mHeaderMarginBottom;
 
             // Draw the text if its y position is not outside of the visible area. The pivot point of the text is the point at the bottom-right corner.
-            String time = getDateTimeInterpreter().interpretTime(i);
+            String time = getDateTimeInterpreter().interpretTime(i + startHour);
             if (time == null)
                 throw new IllegalStateException("A DateTimeInterpreter must not return null time");
             if (top < getHeight()) canvas.drawText(time, mTimeTextWidth + mHeaderColumnPadding, top + mTimeTextHeight, mTimeTextPaint);
@@ -558,7 +578,7 @@ public class TimetableView extends View {
         Calendar today = today();
 
         if (mAreDimensionsInvalid) {
-            mEffectiveMinHourHeight= Math.max(mMinHourHeight, (int) ((getHeight() - mHeaderHeight - mHeaderRowPadding * 2 - mHeaderMarginBottom) / 24));
+            mEffectiveMinHourHeight= Math.max(mMinHourHeight, (int) ((getHeight() - mHeaderHeight - mHeaderRowPadding * 2 - mHeaderMarginBottom) / (endHour - startHour)));
 
             mAreDimensionsInvalid = false;
             if(mScrollToDay != null)
@@ -576,9 +596,37 @@ public class TimetableView extends View {
             mIsFirstDraw = false;
 
             // If the week view is being drawn for the first time, then consider the first day of the week.
-            if(mNumberOfVisibleDays >= 7 && today.get(Calendar.DAY_OF_WEEK) != mFirstDayOfWeek && mShowFirstDayOfWeekFirst) {
-                int difference = (today.get(Calendar.DAY_OF_WEEK) - mFirstDayOfWeek);
-                mCurrentOrigin.x += (mWidthPerDay + mColumnGap) * difference;
+            if(today.get(Calendar.DAY_OF_WEEK) != mFirstDayOfWeek && mShowFirstDayOfWeekFirst) {
+                if(mNumberOfVisibleDays >= 5 || today.get(Calendar.DAY_OF_WEEK) == Calendar.SUNDAY) {
+                    int difference = (today.get(Calendar.DAY_OF_WEEK) - mFirstDayOfWeek);
+                    mCurrentOrigin.x += (mWidthPerDay + mColumnGap) * difference;
+                } else if (mNumberOfVisibleDays >= 3) {
+                    switch(today.get(Calendar.DAY_OF_WEEK)) {
+                        case Calendar.SUNDAY:
+                        case Calendar.MONDAY:
+                            goToWeekDay(Calendar.MONDAY);
+                            break;
+                        case Calendar.SATURDAY:
+                            if(showSaturday) {
+                                goToWeekDay(Calendar.SATURDAY - 2);
+                            } else {
+                                goToWeekDay(Calendar.MONDAY);
+                            }
+                            break;
+                        case Calendar.FRIDAY:
+                            if(showSaturday) {
+                                goToWeekDay(Calendar.FRIDAY - 1);
+                            } else {
+                                goToWeekDay(Calendar.FRIDAY - 2);
+                            }
+                            break;
+                        default:
+                            goToWeekDay(today.get(Calendar.DAY_OF_WEEK) - 1);
+                            break;
+                    }
+                } else if (mNumberOfVisibleDays >= 1) {
+                    goToToday();
+                }
             }
         }
 
@@ -595,8 +643,8 @@ public class TimetableView extends View {
         }
 
         // If the new mCurrentOrigin.y is invalid, make it valid.
-        if (mCurrentOrigin.y < getHeight() - mHourHeight * 24 - mHeaderHeight - mHeaderRowPadding * 2 - mHeaderMarginBottom - mTimeTextHeight/2)
-            mCurrentOrigin.y = getHeight() - mHourHeight * 24 - mHeaderHeight - mHeaderRowPadding * 2 - mHeaderMarginBottom - mTimeTextHeight/2;
+        if (mCurrentOrigin.y < getHeight() - mHourHeight * (endHour - startHour) - mHeaderHeight - mHeaderRowPadding * 2 - mHeaderMarginBottom - mTimeTextHeight/2)
+            mCurrentOrigin.y = getHeight() - mHourHeight * (endHour - startHour) - mHeaderHeight - mHeaderRowPadding * 2 - mHeaderMarginBottom - mTimeTextHeight/2;
 
         // Don't put an "else if" because it will trigger a glitch when completely zoomed out and
         // scrolling vertically.
@@ -651,8 +699,8 @@ public class TimetableView extends View {
             // Get more events if necessary. We want to store the events 3 months beforehand. Get
             // events only when it is the first iteration of the loop.
             if (mEventRects == null || mRefreshEvents ||
-                    (dayNumber == leftDaysWithGaps + 1 && mFetchedPeriod != (int) mWeekViewLoader.toWeekViewPeriodIndex(day) &&
-                            Math.abs(mFetchedPeriod - mWeekViewLoader.toWeekViewPeriodIndex(day)) > 0.5)) {
+                    (dayNumber == leftDaysWithGaps && mFetchedPeriod != (int) mTimetableViewLoader.toWeekViewPeriodIndex(day) &&
+                            Math.abs(mFetchedPeriod - mTimetableViewLoader.toWeekViewPeriodIndex(day)) > 0.5)) {
                 getMoreEvents(day);
                 mRefreshEvents = false;
             }
@@ -686,7 +734,7 @@ public class TimetableView extends View {
 
             // Prepare the separator lines for hours.
             int i = 0;
-            for (int hourNumber = 0; hourNumber < 24; hourNumber++) {
+            for (int hourNumber = 0; hourNumber < endHour - startHour; hourNumber++) {
                 float top = mHeaderHeight + mHeaderRowPadding * 2 + mCurrentOrigin.y + mHourHeight * hourNumber + mTimeTextHeight/2 + mHeaderMarginBottom;
                 if (top > mHeaderHeight + mHeaderRowPadding * 2 + mTimeTextHeight/2 + mHeaderMarginBottom - mHourSeparatorHeight && top < getHeight() && startPixel + mWidthPerDay - start > 0){
                     hourLines[i * 4] = start;
@@ -702,6 +750,14 @@ public class TimetableView extends View {
 
             // Draw the events.
             drawEvents(day, startPixel, canvas);
+
+            // Draw current time bar
+            if(sameDay) {
+                if(showIndicator) {
+                    drawCurrentTimeBar(startPixel, canvas);
+                }
+            }
+
 
             // Draw the line at the current time.
             if (mShowNowLine && sameDay){
@@ -743,6 +799,19 @@ public class TimetableView extends View {
         }
 
     }
+
+    private void drawCurrentTimeBar(float start, Canvas canvas) {
+        Calendar current = Calendar.getInstance();
+        float startY = mHeaderHeight + mHeaderRowPadding * 2 + mHeaderMarginBottom + mTimeTextHeight/2;
+        float numOfHour = (current.get(Calendar.HOUR_OF_DAY) - startHour) + (current.get(Calendar.MINUTE) / 60.0f);
+        float minuteY = (mHourHeight *  numOfHour) + mCurrentOrigin.y + startY;
+        float radius = 30 / 2;
+        Paint colorPrimary = new Paint();
+        colorPrimary.setColor(mTimeBarColor);
+        canvas.drawRect(start, minuteY - 3, start + mWidthPerDay, minuteY + 3, colorPrimary);
+        canvas.drawCircle(start, minuteY, radius, colorPrimary);
+    }
+
 
     /**
      * Get the time and date where the user clicked on.
@@ -872,7 +941,7 @@ public class TimetableView extends View {
      * @param originalTop The original top position of the rectangle. The rectangle may have some of its portion outside of the visible area.
      * @param originalLeft The original left position of the rectangle. The rectangle may have some of its portion outside of the visible area.
      */
-    private void drawEventTitle(WeekViewEvent event, RectF rect, Canvas canvas, float originalTop, float originalLeft) {
+    private void drawEventTitle(TimetableViewEvent event, RectF rect, Canvas canvas, float originalTop, float originalLeft) {
         if (rect.right - rect.left - mEventPadding * 2 < 0) return;
         if (rect.bottom - rect.top - mEventPadding * 2 < 0) return;
 
@@ -881,7 +950,6 @@ public class TimetableView extends View {
         if (event.getName() != null) {
             bob.append(event.getName());
             bob.setSpan(new StyleSpan(android.graphics.Typeface.BOLD), 0, bob.length(), 0);
-            bob.append(' ');
         }
 
         // Prepare the location of the event.
@@ -891,6 +959,8 @@ public class TimetableView extends View {
 
         int availableHeight = (int) (rect.bottom - originalTop - mEventPadding * 2);
         int availableWidth = (int) (rect.right - originalLeft - mEventPadding * 2);
+
+        mEventTextPaint.setColor(event.getTextColor());
 
         // Get text dimensions.
         StaticLayout textLayout = new StaticLayout(bob, mEventTextPaint, availableWidth, Layout.Alignment.ALIGN_NORMAL, 1.0f, 0.0f, false);
@@ -928,8 +998,8 @@ public class TimetableView extends View {
      * instance will be stored in "event".
      */
     private class EventRect {
-        public WeekViewEvent event;
-        public WeekViewEvent originalEvent;
+        public TimetableViewEvent event;
+        public TimetableViewEvent originalEvent;
         public RectF rectF;
         public float left;
         public float width;
@@ -947,7 +1017,7 @@ public class TimetableView extends View {
          * @param originalEvent The original event that was passed by the user.
          * @param rectF The rectangle.
          */
-        public EventRect(WeekViewEvent event, WeekViewEvent originalEvent, RectF rectF) {
+        public EventRect(TimetableViewEvent event, TimetableViewEvent originalEvent, RectF rectF) {
             this.event = event;
             this.rectF = rectF;
             this.originalEvent = originalEvent;
@@ -966,7 +1036,7 @@ public class TimetableView extends View {
         // Get more events if the month is changed.
         if (mEventRects == null)
             mEventRects = new ArrayList<EventRect>();
-        if (mWeekViewLoader == null && !isInEditMode())
+        if (mTimetableViewLoader == null && !isInEditMode())
             throw new IllegalStateException("You must provide a MonthChangeListener");
 
         // If a refresh was requested then reset some variables.
@@ -978,12 +1048,12 @@ public class TimetableView extends View {
             mFetchedPeriod = -1;
         }
 
-        if (mWeekViewLoader != null){
-            int periodToFetch = (int) mWeekViewLoader.toWeekViewPeriodIndex(day);
+        if (mTimetableViewLoader != null){
+            int periodToFetch = (int) mTimetableViewLoader.toWeekViewPeriodIndex(day);
             if (!isInEditMode() && (mFetchedPeriod < 0 || mFetchedPeriod != periodToFetch || mRefreshEvents)) {
-                List<? extends WeekViewEvent> previousPeriodEvents = null;
-                List<? extends WeekViewEvent> currentPeriodEvents = null;
-                List<? extends WeekViewEvent> nextPeriodEvents = null;
+                List<? extends TimetableViewEvent> previousPeriodEvents = null;
+                List<? extends TimetableViewEvent> currentPeriodEvents = null;
+                List<? extends TimetableViewEvent> nextPeriodEvents = null;
 
                 if (mPreviousPeriodEvents != null && mCurrentPeriodEvents != null && mNextPeriodEvents != null){
                     if (periodToFetch == mFetchedPeriod-1){
@@ -1001,11 +1071,11 @@ public class TimetableView extends View {
                     }
                 }
                 if (currentPeriodEvents == null)
-                    currentPeriodEvents = mWeekViewLoader.onLoad(periodToFetch);
+                    currentPeriodEvents = mTimetableViewLoader.onLoad(periodToFetch);
                 if (previousPeriodEvents == null)
-                    previousPeriodEvents = mWeekViewLoader.onLoad(periodToFetch-1);
+                    previousPeriodEvents = mTimetableViewLoader.onLoad(periodToFetch-1);
                 if (nextPeriodEvents == null)
-                    nextPeriodEvents = mWeekViewLoader.onLoad(periodToFetch+1);
+                    nextPeriodEvents = mTimetableViewLoader.onLoad(periodToFetch+1);
 
 
                 // Clear events.
@@ -1053,11 +1123,11 @@ public class TimetableView extends View {
      * Cache the event for smooth scrolling functionality.
      * @param event The event to cache.
      */
-    private void cacheEvent(WeekViewEvent event) {
+    private void cacheEvent(TimetableViewEvent event) {
         if(event.getStartTime().compareTo(event.getEndTime()) >= 0)
             return;
-        List<WeekViewEvent> splitedEvents = event.splitWeekViewEvents();
-        for(WeekViewEvent splitedEvent: splitedEvents){
+        List<TimetableViewEvent> splitedEvents = event.splitWeekViewEvents();
+        for(TimetableViewEvent splitedEvent: splitedEvents){
             mEventRects.add(new EventRect(splitedEvent, event, null));
         }
     }
@@ -1066,9 +1136,9 @@ public class TimetableView extends View {
      * Sort and cache events.
      * @param events The events to be sorted and cached.
      */
-    private void sortAndCacheEvents(List<? extends WeekViewEvent> events) {
+    private void sortAndCacheEvents(List<? extends TimetableViewEvent> events) {
         sortEvents(events);
-        for (WeekViewEvent event : events) {
+        for (TimetableViewEvent event : events) {
             cacheEvent(event);
         }
     }
@@ -1077,10 +1147,10 @@ public class TimetableView extends View {
      * Sorts the events in ascending order.
      * @param events The events to be sorted.
      */
-    private void sortEvents(List<? extends WeekViewEvent> events) {
-        Collections.sort(events, new Comparator<WeekViewEvent>() {
+    private void sortEvents(List<? extends TimetableViewEvent> events) {
+        Collections.sort(events, new Comparator<TimetableViewEvent>() {
             @Override
-            public int compare(WeekViewEvent event1, WeekViewEvent event2) {
+            public int compare(TimetableViewEvent event1, TimetableViewEvent event2) {
                 long start1 = event1.getStartTime().getTimeInMillis();
                 long start2 = event2.getStartTime().getTimeInMillis();
                 int comparator = start1 > start2 ? 1 : (start1 < start2 ? -1 : 0);
@@ -1194,7 +1264,7 @@ public class TimetableView extends View {
      * @param event2 The second event.
      * @return true if the events overlap.
      */
-    private boolean isEventsCollide(WeekViewEvent event1, WeekViewEvent event2) {
+    private boolean isEventsCollide(TimetableViewEvent event1, TimetableViewEvent event2) {
         long start1 = event1.getStartTime().getTimeInMillis();
         long end1 = event1.getEndTime().getTimeInMillis();
         long start2 = event2.getStartTime().getTimeInMillis();
@@ -1234,33 +1304,33 @@ public class TimetableView extends View {
     }
 
     public @Nullable MonthLoader.MonthChangeListener getMonthChangeListener() {
-        if (mWeekViewLoader instanceof MonthLoader)
-            return ((MonthLoader) mWeekViewLoader).getOnMonthChangeListener();
+        if (mTimetableViewLoader instanceof MonthLoader)
+            return ((MonthLoader) mTimetableViewLoader).getOnMonthChangeListener();
         return null;
     }
 
     public void setMonthChangeListener(MonthLoader.MonthChangeListener monthChangeListener) {
-        this.mWeekViewLoader = new MonthLoader(monthChangeListener);
+        this.mTimetableViewLoader = new MonthLoader(monthChangeListener);
     }
 
     /**
      * Get event loader in the week view. Event loaders define the  interval after which the events
      * are loaded in week view. For a MonthLoader events are loaded for every month. You can define
-     * your custom event loader by extending WeekViewLoader.
+     * your custom event loader by extending TimetableViewLoader.
      * @return The event loader.
      */
-    public WeekViewLoader getWeekViewLoader(){
-        return mWeekViewLoader;
+    public TimetableViewLoader getWeekViewLoader(){
+        return mTimetableViewLoader;
     }
 
     /**
      * Set event loader in the week view. For example, a MonthLoader. Event loaders define the
      * interval after which the events are loaded in week view. For a MonthLoader events are loaded
-     * for every month. You can define your custom event loader by extending WeekViewLoader.
+     * for every month. You can define your custom event loader by extending TimetableViewLoader.
      * @param loader The event loader.
      */
-    public void setWeekViewLoader(WeekViewLoader loader){
-        this.mWeekViewLoader = loader;
+    public void setWeekViewLoader(TimetableViewLoader loader){
+        this.mTimetableViewLoader = loader;
     }
 
     public EventLongPressListener getEventLongPressListener() {
@@ -1273,6 +1343,10 @@ public class TimetableView extends View {
 
     public void setEmptyViewClickListener(EmptyViewClickListener emptyViewClickListener){
         this.mEmptyViewClickListener = emptyViewClickListener;
+    }
+
+    public void setNewHourHeight(int newHourHeight){
+        this.mNewHourHeight = newHourHeight;
     }
 
     public EmptyViewClickListener getEmptyViewClickListener(){
@@ -1291,8 +1365,21 @@ public class TimetableView extends View {
         this.mScrollListener = scrolledListener;
     }
 
+    public void setInitListener(InitListener initListener){
+        this.mInitListener = initListener;
+    }
+
+    public void setScaleDetector(ScaleGestureDetector scaleDetector){
+        this.mScaleDetector = scaleDetector;
+    }
+
     public ScrollListener getScrollListener(){
         return mScrollListener;
+    }
+
+    public void setEndHour(int hour) {
+        this.endHour = hour;
+        invalidate();
     }
 
     /**
@@ -1305,7 +1392,8 @@ public class TimetableView extends View {
                 @Override
                 public String interpretDate(Calendar date) {
                     try {
-                        SimpleDateFormat sdf = mDayNameLength == LENGTH_SHORT ? new SimpleDateFormat("EEEEE M/dd", Locale.getDefault()) : new SimpleDateFormat("EEE M/dd", Locale.getDefault());
+                        SimpleDateFormat sdf = mDayNameLength == LENGTH_SHORT ? new SimpleDateFormat("EEEEE", Locale.getDefault()) : new SimpleDateFormat("EEE", Locale.getDefault());
+                        sdf.setTimeZone(HKT);
                         return sdf.format(date.getTime()).toUpperCase();
                     } catch (Exception e) {
                         e.printStackTrace();
@@ -1358,6 +1446,7 @@ public class TimetableView extends View {
      */
     public void setNumberOfVisibleDays(int numberOfVisibleDays) {
         this.mNumberOfVisibleDays = numberOfVisibleDays;
+        this.mIsFirstDraw = true;
         mCurrentOrigin.x = 0;
         mCurrentOrigin.y = 0;
         invalidate();
@@ -1400,6 +1489,10 @@ public class TimetableView extends View {
     public void setFirstDayOfWeek(int firstDayOfWeek) {
         mFirstDayOfWeek = firstDayOfWeek;
         invalidate();
+    }
+
+    public void setIsZooming(Boolean isZooming){
+        mIsZooming = isZooming;
     }
 
     public boolean isShowFirstDayOfWeekFirst() {
@@ -1559,6 +1652,15 @@ public class TimetableView extends View {
         invalidate();
     }
 
+    public boolean getShowSaturday() {
+        return showSaturday;
+    }
+
+    public void setShowSaturday(Boolean show) {
+        showSaturday = show;
+        invalidate();
+    }
+
     /**
      * <b>Note:</b> Use {@link #setDateTimeInterpreter(DateTimeInterpreter)} and
      * {@link #getDateTimeInterpreter()} instead.
@@ -1575,8 +1677,8 @@ public class TimetableView extends View {
      * <p>
      *     <b>Note:</b> Use {@link #setDateTimeInterpreter(DateTimeInterpreter)} instead.
      * </p>
-     * @param length Supported values are {@link com.alamkanak.weekview.WeekView#LENGTH_SHORT} and
-     * {@link com.alamkanak.weekview.WeekView#LENGTH_LONG}.
+     * @param length Supported values are {@link com.alamkanak.weekview.TimetableView#LENGTH_SHORT} and
+     * {@link com.alamkanak.weekview.TimetableView#LENGTH_LONG}.
      */
     @Deprecated
     public void setDayNameLength(int length) {
@@ -1824,6 +1926,9 @@ public class TimetableView extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+
+        mIsZooming = event.getPointerCount() >= 2;
+
         mScaleDetector.onTouchEvent(event);
         boolean val = mGestureDetector.onTouchEvent(event);
 
@@ -1838,7 +1943,7 @@ public class TimetableView extends View {
         return val;
     }
 
-    private void goToNearestOrigin(){
+    public void goToNearestOrigin(){
         double leftDays = mCurrentOrigin.x / (mWidthPerDay + mColumnGap);
 
         if (mCurrentFlingDirection != Direction.NONE) {
@@ -1862,7 +1967,7 @@ public class TimetableView extends View {
             mScroller.forceFinished(true);
             // Snap to date.
             mScroller.startScroll((int) mCurrentOrigin.x, (int) mCurrentOrigin.y, -nearestOrigin, 0, (int) (Math.abs(nearestOrigin) / mWidthPerDay * mScrollDuration));
-            ViewCompat.postInvalidateOnAnimation(WeekView.this);
+            ViewCompat.postInvalidateOnAnimation(TimetableView.this);
         }
         // Reset scrolling and fling direction.
         mCurrentScrollDirection = mCurrentFlingDirection = Direction.NONE;
@@ -1917,6 +2022,12 @@ public class TimetableView extends View {
         goToDate(today);
     }
 
+    public void goToWeekDay(int weekday) {
+        Calendar day = Calendar.getInstance();
+        day.set(Calendar.DAY_OF_WEEK, weekday);
+        goToDate(day);
+    }
+
     /**
      * Show a specific day on the week view.
      * @param date The date to show.
@@ -1929,6 +2040,8 @@ public class TimetableView extends View {
         date.set(Calendar.MINUTE, 0);
         date.set(Calendar.SECOND, 0);
         date.set(Calendar.MILLISECOND, 0);
+
+        currentWeekday = date.get(Calendar.DAY_OF_WEEK);
 
         if(mAreDimensionsInvalid) {
             mScrollToDay = date;
@@ -1971,12 +2084,12 @@ public class TimetableView extends View {
 
         int verticalOffset = 0;
         if (hour > 24)
-            verticalOffset = mHourHeight * 24;
+            verticalOffset = mHourHeight * (endHour - startHour);
         else if (hour > 0)
-            verticalOffset = (int) (mHourHeight * hour);
+            verticalOffset = (int) (mHourHeight * (hour - startHour));
 
-        if (verticalOffset > mHourHeight * 24 - getHeight() + mHeaderHeight + mHeaderRowPadding * 2 + mHeaderMarginBottom)
-            verticalOffset = (int)(mHourHeight * 24 - getHeight() + mHeaderHeight + mHeaderRowPadding * 2 + mHeaderMarginBottom);
+        if (verticalOffset > mHourHeight * (endHour - startHour) - getHeight() + mHeaderHeight + mHeaderRowPadding * 2 + mHeaderMarginBottom)
+            verticalOffset = (int)(mHourHeight * (endHour - startHour) - getHeight() + mHeaderHeight + mHeaderRowPadding * 2 + mHeaderMarginBottom);
 
         mCurrentOrigin.y = -verticalOffset;
         invalidate();
@@ -1990,7 +2103,12 @@ public class TimetableView extends View {
         return -mCurrentOrigin.y / mHourHeight;
     }
 
+    public void setShowIndicator(boolean show) {
+        this.showIndicator = show;
+        invalidate();
+    }
 
+    public boolean isShowingIndicator() { return this.showIndicator; }
 
     /////////////////////////////////////////////////////////////////
     //
@@ -2004,16 +2122,16 @@ public class TimetableView extends View {
          * @param event: event clicked.
          * @param eventRect: view containing the clicked event.
          */
-        void onEventClick(WeekViewEvent event, RectF eventRect);
+        void onEventClick(TimetableViewEvent event, RectF eventRect);
     }
 
     public interface EventLongPressListener {
         /**
-         * Similar to {@link com.alamkanak.weekview.WeekView.EventClickListener} but with a long press.
+         * Similar to {@link com.alamkanak.weekview.TimetableView.EventClickListener} but with a long press.
          * @param event: event clicked.
          * @param eventRect: view containing the clicked event.
          */
-        void onEventLongPress(WeekViewEvent event, RectF eventRect);
+        void onEventLongPress(TimetableViewEvent event, RectF eventRect);
     }
 
     public interface EmptyViewClickListener {
@@ -2026,7 +2144,7 @@ public class TimetableView extends View {
 
     public interface EmptyViewLongPressListener {
         /**
-         * Similar to {@link com.alamkanak.weekview.WeekView.EmptyViewClickListener} but with long press.
+         * Similar to {@link com.alamkanak.weekview.TimetableView.EmptyViewClickListener} but with long press.
          * @param time: {@link Calendar} object set with the date and time of the long pressed position on the view.
          */
         void onEmptyViewLongPress(Calendar time);
@@ -2041,5 +2159,51 @@ public class TimetableView extends View {
          * @param oldFirstVisibleDay The old first visible day (is null on the first call).
          */
         void onFirstVisibleDayChanged(Calendar newFirstVisibleDay, Calendar oldFirstVisibleDay);
+    }
+
+    public interface InitListener {
+        /**
+         * Called when the first visible day has changed.
+         *
+         * (this will also be called during the initialization of the weekview)
+         */
+        void onInit();
+    }
+
+    /////////////////////////////////////////////////////////////////
+    //
+    //      Helper methods.
+    //
+    /////////////////////////////////////////////////////////////////
+
+    /**
+     * Checks if two times are on the same day.
+     * @param dayOne The first day.
+     * @param dayTwo The second day.
+     * @return Whether the times are on the same day.
+     */
+    public static boolean isSameDay(Calendar dayOne, Calendar dayTwo) {
+        return dayOne.get(Calendar.YEAR) == dayTwo.get(Calendar.YEAR) && dayOne.get(Calendar.DAY_OF_YEAR) == dayTwo.get(Calendar.DAY_OF_YEAR);
+    }
+
+    /**
+     * Returns a calendar instance at the start of this day
+     * @return the calendar instance
+     */
+    public static Calendar today(){
+        Calendar today = Calendar.getInstance(HKT, Locale.ENGLISH);
+        today.set(Calendar.HOUR_OF_DAY, 0);
+        today.set(Calendar.MINUTE, 0);
+        today.set(Calendar.SECOND, 0);
+        today.set(Calendar.MILLISECOND, 0);
+        return today;
+    }
+
+    public BoundaryHitListener getBoundaryHitListener() {
+        return mBoundaryHitListener;
+    }
+
+    public void setBoundaryHitListener(BoundaryHitListener mBoundaryHitListener) {
+        this.mBoundaryHitListener = mBoundaryHitListener;
     }
 }

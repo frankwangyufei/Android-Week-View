@@ -3,7 +3,7 @@ package com.alamkanak.weekview;
 import java.util.Calendar;
 import java.util.List;
 
-public class MonthLoader implements WeekViewLoader {
+public class MonthLoader implements TimetableViewLoader {
 
     private MonthChangeListener mOnMonthChangeListener;
 
@@ -17,7 +17,7 @@ public class MonthLoader implements WeekViewLoader {
     }
 
     @Override
-    public List<? extends WeekViewEvent> onLoad(int periodIndex){
+    public List<? extends TimetableViewEvent> onLoad(int periodIndex){
         return mOnMonthChangeListener.onMonthChange(periodIndex / 12, periodIndex % 12 + 1);
     }
 
@@ -38,6 +38,6 @@ public class MonthLoader implements WeekViewLoader {
          * @param newMonth : month of the events required by the view <br/><strong>1 based (not like JAVA API) --> January = 1 and December = 12</strong>.
          * @return a list of the events happening <strong>during the specified month</strong>.
          */
-        List<? extends WeekViewEvent> onMonthChange(int newYear, int newMonth);
+        List<? extends TimetableViewEvent> onMonthChange(int newYear, int newMonth);
     }
 }
