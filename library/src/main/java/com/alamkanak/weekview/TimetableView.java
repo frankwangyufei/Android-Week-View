@@ -173,7 +173,6 @@ public class TimetableView extends View {
     private EmptyViewLongPressListener mEmptyViewLongPressListener;
     private DateTimeInterpreter mDateTimeInterpreter;
     private ScrollListener mScrollListener;
-    private InitListener mInitListener;
 
     // USThing custom listeners
     private BoundaryHitListener mBoundaryHitListener;
@@ -1367,10 +1366,6 @@ public class TimetableView extends View {
         this.mScrollListener = scrolledListener;
     }
 
-    public void setInitListener(InitListener initListener){
-        this.mInitListener = initListener;
-    }
-
     public void setScaleDetector(ScaleGestureDetector scaleDetector){
         this.mScaleDetector = scaleDetector;
     }
@@ -1394,7 +1389,7 @@ public class TimetableView extends View {
                 @Override
                 public String interpretDate(Calendar date) {
                     try {
-                        SimpleDateFormat sdf = mDayNameLength == LENGTH_SHORT ? new SimpleDateFormat("EEEEE", Locale.getDefault()) : new SimpleDateFormat("EEE", Locale.getDefault());
+                        SimpleDateFormat sdf = mDayNameLength == LENGTH_SHORT ? new SimpleDateFormat("EEEEE M/dd", Locale.getDefault()) : new SimpleDateFormat("EEE M/dd", Locale.getDefault());
                         sdf.setTimeZone(HKT);
                         return sdf.format(date.getTime()).toUpperCase();
                     } catch (Exception e) {
@@ -2162,16 +2157,6 @@ public class TimetableView extends View {
          */
         void onFirstVisibleDayChanged(Calendar newFirstVisibleDay, Calendar oldFirstVisibleDay);
     }
-
-    public interface InitListener {
-        /**
-         * Called when the first visible day has changed.
-         *
-         * (this will also be called during the initialization of the weekview)
-         */
-        void onInit();
-    }
-
     /////////////////////////////////////////////////////////////////
     //
     //      Helper methods.
