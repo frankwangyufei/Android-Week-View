@@ -324,6 +324,8 @@ public class TimetableView extends View {
     public void postInvalidateOnAnimation() {
         super.postInvalidateOnAnimation();
         if(mBoundaryHitListener == null) return;
+        mBoundaryHitListener.onLeftBoundaryHit(false);
+        mBoundaryHitListener.onRightBoundaryHit(false);
         mBoundaryHitListener.onTopBoundaryHit(mCurrentOrigin.y >= 0);
         mBoundaryHitListener.onBottomBoundaryHit(mCurrentOrigin.y <= getMinY());
     }
