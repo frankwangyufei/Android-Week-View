@@ -27,6 +27,7 @@
         <attr name="weekendHourSeparatorColor" format="color"/>
         <attr name="todayBackgroundColor" format="color"/>
         <attr name="todayHeaderTextColor" format="color"/>
+        <attr name="weekendHeaderTextColor" format="color"/>
         <attr name="hourSeparatorHeight" format="dimension"/>
         <attr name="eventTextColor" format="color"/>
         <attr name="eventPadding" format="dimension"/>

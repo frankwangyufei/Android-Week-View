@@ -89,6 +89,7 @@ public class TimetableView extends View {
     private Paint mPastWeekendBackgroundPaint;
     private Paint mNowLinePaint;
     private Paint mTodayHeaderTextPaint;
+    private Paint mWeekendHeaderTextPaint;
     private Paint mEventBackgroundPaint;
     private float mHeaderColumnWidth;
     private List<EventRect> mEventRects;
@@ -134,6 +135,7 @@ public class TimetableView extends View {
     private int mTodayBackgroundColor = Color.rgb(239, 247, 254);
     private int mHourSeparatorHeight = 2;
     private int mTodayHeaderTextColor = Color.rgb(39, 137, 228);
+    private int mWeekendHeaderTextColor = 0;
     private int mEventTextSize = 12;
     private int mEventTextColor = Color.BLACK;
     private int mEventPadding = 8;
@@ -385,6 +387,7 @@ public class TimetableView extends View {
             mTodayBackgroundColor = a.getColor(R.styleable.WeekView_todayBackgroundColor, mTodayBackgroundColor);
             mHourSeparatorHeight = a.getDimensionPixelSize(R.styleable.WeekView_hourSeparatorHeight, mHourSeparatorHeight);
             mTodayHeaderTextColor = a.getColor(R.styleable.WeekView_todayHeaderTextColor, mTodayHeaderTextColor);
+            mWeekendHeaderTextColor = a.getColor(R.styleable.WeekView_weekendHeaderTextColor, mHeaderColumnBackgroundColor);
             mEventTextSize = a.getDimensionPixelSize(R.styleable.WeekView_eventTextSize, (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, mEventTextSize, context.getResources().getDisplayMetrics()));
             mEventTextColor = a.getColor(R.styleable.WeekView_eventTextColor, mEventTextColor);
             mEventPadding = a.getDimensionPixelSize(R.styleable.WeekView_eventPadding, mEventPadding);
@@ -478,6 +481,13 @@ public class TimetableView extends View {
         mTodayHeaderTextPaint.setTextSize(mTextSize);
         mTodayHeaderTextPaint.setTypeface(Typeface.DEFAULT_BOLD);
         mTodayHeaderTextPaint.setColor(mTodayHeaderTextColor);
+
+        // Prepare weekend header text color paint.
+        mWeekendHeaderTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        mWeekendHeaderTextPaint.setTextAlign(Paint.Align.CENTER);
+        mWeekendHeaderTextPaint.setTextSize(mTextSize);
+        mWeekendHeaderTextPaint.setTypeface(Typeface.DEFAULT_BOLD);
+        mWeekendHeaderTextPaint.setColor(mWeekendHeaderTextColor);
 
         // Prepare event background color.
         mEventBackgroundPaint = new Paint();
@@ -807,7 +817,8 @@ public class TimetableView extends View {
             String dayLabel = getDateTimeInterpreter().interpretDate(day);
             if (dayLabel == null)
                 throw new IllegalStateException("A DateTimeInterpreter must not return null date");
-            canvas.drawText(dayLabel, startPixel + mWidthPerDay / 2, mHeaderTextHeight + mHeaderRowPadding, sameDay ? mTodayHeaderTextPaint : mHeaderTextPaint);
+            boolean isWeekend = day.get(Calendar.DAY_OF_WEEK) == Calendar.SATURDAY || day.get(Calendar.DAY_OF_WEEK) == Calendar.SUNDAY;
+            canvas.drawText(dayLabel, startPixel + mWidthPerDay / 2, mHeaderTextHeight + mHeaderRowPadding, sameDay ? mTodayHeaderTextPaint : isWeekend? mWeekendHeaderTextPaint : mHeaderTextPaint);
             drawAllDayEvents(day, startPixel, canvas);
             startPixel += mWidthPerDay + mColumnGap;
         }
