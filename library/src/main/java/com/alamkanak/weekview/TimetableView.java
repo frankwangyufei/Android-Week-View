@@ -325,7 +325,7 @@ public class TimetableView extends View {
         if(mBoundaryHitListener == null) return;
         mBoundaryHitListener.onLeftBoundaryHit(false);
         mBoundaryHitListener.onRightBoundaryHit(false);
-        mBoundaryHitListener.onTopBoundaryHit(mCurrentOrigin.y >= 0);
+        mBoundaryHitListener.onTopBoundaryHit(mCurrentScrollDirection == Direction.VERTICAL);
         mBoundaryHitListener.onBottomBoundaryHit(mCurrentOrigin.y <= getMinY());
     }
 
