@@ -80,6 +80,7 @@ public class TimetableView extends View {
     private float mWidthPerDay;
     private Paint mDayBackgroundPaint;
     private Paint mHourSeparatorPaint;
+    private Paint mWeekendHourSeparatorPaint;
     private float mHeaderMarginBottom;
     private Paint mTodayBackgroundPaint;
     private Paint mFutureBackgroundPaint;
@@ -129,6 +130,7 @@ public class TimetableView extends View {
     private int mNowLineColor = Color.rgb(102, 102, 102);
     private int mNowLineThickness = 5;
     private int mHourSeparatorColor = Color.rgb(230, 230, 230);
+    private int mWeekendHourSeparatorColor = 0;
     private int mTodayBackgroundColor = Color.rgb(239, 247, 254);
     private int mHourSeparatorHeight = 2;
     private int mTodayHeaderTextColor = Color.rgb(39, 137, 228);
@@ -379,6 +381,7 @@ public class TimetableView extends View {
             mNowLineColor = a.getColor(R.styleable.WeekView_nowLineColor, mNowLineColor);
             mNowLineThickness = a.getDimensionPixelSize(R.styleable.WeekView_nowLineThickness, mNowLineThickness);
             mHourSeparatorColor = a.getColor(R.styleable.WeekView_hourSeparatorColor, mHourSeparatorColor);
+            mWeekendHourSeparatorColor = a.getColor(R.styleable.WeekView_weekendHourSeparatorColor, mHourSeparatorColor);
             mTodayBackgroundColor = a.getColor(R.styleable.WeekView_todayBackgroundColor, mTodayBackgroundColor);
             mHourSeparatorHeight = a.getDimensionPixelSize(R.styleable.WeekView_hourSeparatorHeight, mHourSeparatorHeight);
             mTodayHeaderTextColor = a.getColor(R.styleable.WeekView_todayHeaderTextColor, mTodayHeaderTextColor);
@@ -453,6 +456,12 @@ public class TimetableView extends View {
         mHourSeparatorPaint.setStyle(Paint.Style.STROKE);
         mHourSeparatorPaint.setStrokeWidth(mHourSeparatorHeight);
         mHourSeparatorPaint.setColor(mHourSeparatorColor);
+
+        // Prepare weekend hour separator color paint.
+        mWeekendHourSeparatorPaint = new Paint();
+        mWeekendHourSeparatorPaint.setStyle(Paint.Style.STROKE);
+        mWeekendHourSeparatorPaint.setStrokeWidth(mHourSeparatorHeight);
+        mWeekendHourSeparatorPaint.setColor(mWeekendHourSeparatorColor);
 
         // Prepare the "now" line color paint
         mNowLinePaint = new Paint();
@@ -716,10 +725,7 @@ public class TimetableView extends View {
                     float startY = mHeaderHeight + mHeaderRowPadding * 2 + mTimeTextHeight/2 + mHeaderMarginBottom + mCurrentOrigin.y;
 
                     if (sameDay){
-                        Calendar now = Calendar.getInstance();
-                        float beforeNow = (now.get(Calendar.HOUR_OF_DAY) + now.get(Calendar.MINUTE)/60.0f) * mHourHeight;
-                        canvas.drawRect(start, startY, startPixel + mWidthPerDay, startY+beforeNow, pastPaint);
-                        canvas.drawRect(start, startY+beforeNow, startPixel + mWidthPerDay, getHeight(), futurePaint);
+                        canvas.drawRect(start, startY, startPixel + mWidthPerDay, getHeight(), mTodayBackgroundPaint);
                     }
                     else if (day.before(today)) {
                         canvas.drawRect(start, startY, startPixel + mWidthPerDay, getHeight(), pastPaint);
@@ -747,7 +753,10 @@ public class TimetableView extends View {
             }
 
             // Draw the lines for hours.
-            canvas.drawLines(hourLines, mHourSeparatorPaint);
+            if(day.get(Calendar.DAY_OF_WEEK) == Calendar.SUNDAY || day.get(Calendar.DAY_OF_WEEK) == Calendar.SATURDAY)
+                canvas.drawLines(hourLines, mWeekendHourSeparatorPaint);
+            else
+                canvas.drawLines(hourLines, mHourSeparatorPaint);
 
             // Draw the events.
             drawEvents(day, startPixel, canvas);
@@ -1558,6 +1567,16 @@ public class TimetableView extends View {
     public void setDayBackgroundColor(int dayBackgroundColor) {
         mDayBackgroundColor = dayBackgroundColor;
         mDayBackgroundPaint.setColor(mDayBackgroundColor);
+        invalidate();
+    }
+
+    public int getWeekendHourSeparatorColor() {
+        return mWeekendHourSeparatorColor;
+    }
+
+    public void setWeekendHourSeparatorColor(int weekendHourSeparatorColor) {
+        mWeekendHourSeparatorColor = weekendHourSeparatorColor;
+        mWeekendHourSeparatorPaint.setColor(mWeekendHourSeparatorColor);
         invalidate();
     }
 
