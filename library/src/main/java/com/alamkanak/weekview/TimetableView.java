@@ -700,7 +700,7 @@ public class TimetableView extends View {
             // Get more events if necessary. We want to store the events 3 months beforehand. Get
             // events only when it is the first iteration of the loop.
             if (mEventRects == null || mRefreshEvents ||
-                    (dayNumber == leftDaysWithGaps && mFetchedPeriod != (int) mTimetableViewLoader.toWeekViewPeriodIndex(day) &&
+                    (dayNumber == leftDaysWithGaps + 1 && mFetchedPeriod != (int) mTimetableViewLoader.toWeekViewPeriodIndex(day) &&
                             Math.abs(mFetchedPeriod - mTimetableViewLoader.toWeekViewPeriodIndex(day)) > 0.5)) {
                 getMoreEvents(day);
                 mRefreshEvents = false;

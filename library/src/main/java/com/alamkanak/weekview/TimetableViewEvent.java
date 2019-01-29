@@ -24,10 +24,23 @@ public class TimetableViewEvent {
     private int mColor;
     private int mTextColor;
     private boolean mAllDay;
-    private Boolean ismuted;
+    private Boolean isMuted;
 
     public TimetableViewEvent(){
 
+    }
+
+    public TimetableViewEvent(TimetableViewEvent event){
+        this.mId = event.mId;
+        this.mStartTime = (Calendar) event.mStartTime.clone();
+        this.mEndTime = (Calendar) event.mEndTime.clone();
+        this.mName = event.mName;
+        this.mDescription = event.mDescription;
+        this.mLocation = event.mLocation;
+        this.mColor = event.mColor;
+        this.mTextColor = event.mTextColor;
+        this.mAllDay = event.mAllDay;
+        this.isMuted = event.isMuted;
     }
 
     /**
@@ -65,7 +78,7 @@ public class TimetableViewEvent {
 
         this.mName = name;
         this.mDescription = description;
-        this.ismuted = false;
+        this.isMuted = false;
     }
 
     /**
@@ -84,7 +97,7 @@ public class TimetableViewEvent {
         this.mStartTime = startTime;
         this.mEndTime = endTime;
         this.mAllDay = allDay;
-        this.ismuted = false;
+        this.isMuted = false;
     }
 
     /**
@@ -134,7 +147,7 @@ public class TimetableViewEvent {
         this.mStartTime = start;
         this.mEndTime = end;
         this.mAllDay = allDay;
-        this.ismuted = false;
+        this.isMuted = false;
     }
 
 
