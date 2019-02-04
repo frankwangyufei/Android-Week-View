@@ -1001,15 +1001,26 @@ public class TimetableView extends View {
         if (availableHeight >= lineHeight) {
             // Calculate available number of line counts.
             int availableLineCount = availableHeight / lineHeight;
+
+            // Binary search for appropriate ellipsized text to fill in
+            int hi = availableLineCount * availableWidth, lo = 0;
+            int mid;
             do {
+                mid = (hi + lo) / 2;
                 // Ellipsize text to fit into event rect.
-                textLayout = new StaticLayout(TextUtils.ellipsize(bob, mEventTextPaint, availableLineCount * availableWidth, TextUtils.TruncateAt.END), mEventTextPaint, (int) (rect.right - originalLeft - mEventPadding * 2), Layout.Alignment.ALIGN_NORMAL, 1.0f, 0.0f, false);
+                textLayout = new StaticLayout(TextUtils.ellipsize(bob, mEventTextPaint, mid, TextUtils.TruncateAt.END), mEventTextPaint, (int) (rect.right - originalLeft - mEventPadding * 2), Layout.Alignment.ALIGN_NORMAL, 1.0f, 0.0f, false);
 
-                // Reduce line count.
-                availableLineCount--;
+                if (textLayout.getHeight() > availableHeight){
+                    // current text too long
+                    hi = mid - 1;
+                }
+                else{
+                    // current text too short
+                    lo = mid + 1;
+                }
+            } while (hi >= lo);
 
-                // Repeat until text is short enough.
-            } while (textLayout.getHeight() > availableHeight);
+            textLayout = new StaticLayout(TextUtils.ellipsize(bob, mEventTextPaint, hi, TextUtils.TruncateAt.END), mEventTextPaint, (int) (rect.right - originalLeft - mEventPadding * 2), Layout.Alignment.ALIGN_NORMAL, 1.0f, 0.0f, false);
 
             // Draw text.
             canvas.save();
