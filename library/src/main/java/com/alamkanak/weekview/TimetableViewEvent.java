@@ -23,8 +23,9 @@ public class TimetableViewEvent {
     private String mLocation;
     private int mColor;
     private int mTextColor;
+    private boolean mIsFilled;
     private boolean mAllDay;
-    private Boolean isMuted;
+    private boolean mIsMuted;
 
     public TimetableViewEvent(){
 
@@ -39,8 +40,9 @@ public class TimetableViewEvent {
         this.mLocation = event.mLocation;
         this.mColor = event.mColor;
         this.mTextColor = event.mTextColor;
+        this.mIsFilled = event.mIsFilled;
         this.mAllDay = event.mAllDay;
-        this.isMuted = event.isMuted;
+        this.mIsMuted = event.mIsMuted;
     }
 
     /**
@@ -78,7 +80,8 @@ public class TimetableViewEvent {
 
         this.mName = name;
         this.mDescription = description;
-        this.isMuted = false;
+        this.mIsMuted = false;
+        this.mIsFilled = true;
     }
 
     /**
@@ -97,7 +100,8 @@ public class TimetableViewEvent {
         this.mStartTime = startTime;
         this.mEndTime = endTime;
         this.mAllDay = allDay;
-        this.isMuted = false;
+        this.mIsMuted = false;
+        this.mIsFilled = true;
     }
 
     /**
@@ -147,7 +151,8 @@ public class TimetableViewEvent {
         this.mStartTime = start;
         this.mEndTime = end;
         this.mAllDay = allDay;
-        this.isMuted = false;
+        this.mIsMuted = false;
+        this.mIsFilled = true;
     }
 
 
@@ -221,6 +226,14 @@ public class TimetableViewEvent {
 
     public void setId(long id) {
         this.mId = id;
+    }
+
+    public boolean getIsFilled() {
+        return this.mIsFilled;
+    }
+
+    public void setIsFilled(boolean isFilled){
+        this.mIsFilled = isFilled;
     }
 
     @Override

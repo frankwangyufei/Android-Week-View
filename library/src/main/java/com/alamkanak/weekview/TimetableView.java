@@ -166,6 +166,8 @@ public class TimetableView extends View {
 
     private boolean showIndicator = true;
 
+    private float eventStrokeWidth = 2f;
+
     private int mTimeBarColor = Color.parseColor("#000000");
     private static final TimeZone HKT = TimeZone.getTimeZone("HKT");
 
@@ -903,6 +905,8 @@ public class TimetableView extends View {
                             ) {
                         mEventRects.get(i).rectF = new RectF(left, top, right, bottom);
                         mEventBackgroundPaint.setColor(mEventRects.get(i).event.getColor() == 0 ? mDefaultEventColor : mEventRects.get(i).event.getColor());
+                        mEventBackgroundPaint.setStyle(mEventRects.get(i).event.getIsFilled() ? Paint.Style.FILL : Paint.Style.STROKE);
+                        mEventBackgroundPaint.setStrokeWidth(eventStrokeWidth);
                         canvas.drawRoundRect(mEventRects.get(i).rectF, mEventCornerRadius, mEventCornerRadius, mEventBackgroundPaint);
                         drawEventTitle(mEventRects.get(i).event, mEventRects.get(i).rectF, canvas, top, left);
                     }
@@ -947,6 +951,8 @@ public class TimetableView extends View {
                             ) {
                         mEventRects.get(i).rectF = new RectF(left, top, right, bottom);
                         mEventBackgroundPaint.setColor(mEventRects.get(i).event.getColor() == 0 ? mDefaultEventColor : mEventRects.get(i).event.getColor());
+                        mEventBackgroundPaint.setStyle(mEventRects.get(i).event.getIsFilled() ? Paint.Style.FILL : Paint.Style.STROKE);
+                        mEventBackgroundPaint.setStrokeWidth(eventStrokeWidth);
                         canvas.drawRoundRect(mEventRects.get(i).rectF, mEventCornerRadius, mEventCornerRadius, mEventBackgroundPaint);
                         drawEventTitle(mEventRects.get(i).event, mEventRects.get(i).rectF, canvas, top, left);
                     }
