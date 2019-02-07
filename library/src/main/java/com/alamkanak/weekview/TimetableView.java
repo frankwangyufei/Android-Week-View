@@ -618,38 +618,7 @@ public class TimetableView extends View {
             mIsFirstDraw = false;
 
             // If the week view is being drawn for the first time, then consider the first day of the week.
-            if(today.get(Calendar.DAY_OF_WEEK) != mFirstDayOfWeek && mShowFirstDayOfWeekFirst) {
-                if(mNumberOfVisibleDays >= 5 || today.get(Calendar.DAY_OF_WEEK) == Calendar.SUNDAY) {
-                    int difference = (today.get(Calendar.DAY_OF_WEEK) - mFirstDayOfWeek);
-                    mCurrentOrigin.x += (mWidthPerDay + mColumnGap) * difference;
-                } else if (mNumberOfVisibleDays >= 3) {
-                    switch(today.get(Calendar.DAY_OF_WEEK)) {
-                        case Calendar.SUNDAY:
-                        case Calendar.MONDAY:
-                            goToWeekDay(Calendar.MONDAY);
-                            break;
-                        case Calendar.SATURDAY:
-                            if(showSaturday) {
-                                goToWeekDay(Calendar.SATURDAY - 2);
-                            } else {
-                                goToWeekDay(Calendar.MONDAY);
-                            }
-                            break;
-                        case Calendar.FRIDAY:
-                            if(showSaturday) {
-                                goToWeekDay(Calendar.FRIDAY - 1);
-                            } else {
-                                goToWeekDay(Calendar.FRIDAY - 2);
-                            }
-                            break;
-                        default:
-                            goToWeekDay(today.get(Calendar.DAY_OF_WEEK) - 1);
-                            break;
-                    }
-                } else if (mNumberOfVisibleDays >= 1) {
-                    goToToday();
-                }
-            }
+            goToThisWeek();
         }
 
         // Calculate the new height due to the zooming.
@@ -2061,6 +2030,46 @@ public class TimetableView extends View {
     //      Public methods.
     //
     /////////////////////////////////////////////////////////////////
+
+    /**
+     * Show this week on the week view
+     */
+    public void goToThisWeek() {
+        if(today().get(Calendar.DAY_OF_WEEK) != mFirstDayOfWeek && mShowFirstDayOfWeekFirst) {
+            if(mNumberOfVisibleDays >= 5 || today().get(Calendar.DAY_OF_WEEK) == Calendar.SUNDAY) {
+                int difference = (today().get(Calendar.DAY_OF_WEEK) - mFirstDayOfWeek);
+                goToToday();
+                mCurrentOrigin.x += (mWidthPerDay + mColumnGap) * difference;
+            } else if (mNumberOfVisibleDays >= 3) {
+                switch(today().get(Calendar.DAY_OF_WEEK)) {
+                    case Calendar.SUNDAY:
+                    case Calendar.MONDAY:
+                        goToWeekDay(Calendar.MONDAY);
+                        break;
+                    case Calendar.SATURDAY:
+                        if(showSaturday) {
+                            goToWeekDay(Calendar.SATURDAY - 2);
+                        } else {
+                            goToWeekDay(Calendar.MONDAY);
+                        }
+                        break;
+                    case Calendar.FRIDAY:
+                        if(showSaturday) {
+                            goToWeekDay(Calendar.FRIDAY - 1);
+                        } else {
+                            goToWeekDay(Calendar.FRIDAY - 2);
+                        }
+                        break;
+                    default:
+                        goToWeekDay(today().get(Calendar.DAY_OF_WEEK) - 1);
+                        break;
+                }
+            } else if (mNumberOfVisibleDays >= 1) {
+                goToToday();
+            }
+            invalidate();
+        }
+    }
 
     /**
      * Show today on the week view.
