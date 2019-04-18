@@ -23,6 +23,7 @@ import android.text.TextUtils;
 import android.text.format.DateFormat;
 import android.text.style.StyleSpan;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.GestureDetector;
 import android.view.HapticFeedbackConstants;
@@ -171,6 +172,11 @@ public class TimetableView extends View {
     private int mTimeBarColor = Color.parseColor("#000000");
     private static final TimeZone HKT = TimeZone.getTimeZone("HKT");
 
+    private float mDeadZoneWidth = 40f; // width of the deadzone (no scrolling zone) on the left and right of the view
+    public interface OnDownCallback{
+        void onDown(boolean isAllowScroll);
+    }
+    private OnDownCallback mOnDownCallback = null;
     // Listeners.
     private EventClickListener mEventClickListener;
     private EventLongPressListener mEventLongPressListener;
@@ -183,12 +189,25 @@ public class TimetableView extends View {
     // USThing custom listeners
     private BoundaryHitListener mBoundaryHitListener;
 
-    private final GestureDetector.SimpleOnGestureListener mGestureListener = new GestureDetector.SimpleOnGestureListener() {
-
+    private GestureDetector.SimpleOnGestureListener mGestureListener = new GestureDetector.SimpleOnGestureListener() {
         @Override
         public boolean onDown(MotionEvent e) {
             goToNearestOrigin();
-            return true;
+            if (mOnDownCallback == null) return false;
+            Log.d("timetable", Float.toString(e.getX()) + "    " + Float.toString(TimetableView.this.getWidth() - e.getX()));
+            if (e.getX() < mDeadZoneWidth || TimetableView.this.getWidth() - e.getX() < mDeadZoneWidth){
+                // the down gesture is close to the screen edge, scroll parent view instead of the Timetable View
+                if (mOnDownCallback != null) {
+                    mOnDownCallback.onDown(true);
+                }
+                return false;
+            }
+            else {
+                if (mOnDownCallback != null) {
+                    mOnDownCallback.onDown(false);
+                }
+                return true;
+            }
         }
 
         @Override
@@ -2252,5 +2271,9 @@ public class TimetableView extends View {
 
     public void setBoundaryHitListener(BoundaryHitListener mBoundaryHitListener) {
         this.mBoundaryHitListener = mBoundaryHitListener;
+    }
+
+    public void setmOnDownCallback(OnDownCallback mOnDownCallback) {
+        this.mOnDownCallback = mOnDownCallback;
     }
 }
