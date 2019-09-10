@@ -177,6 +177,8 @@ public class TimetableView extends View {
         void onDown(boolean isAllowScroll);
     }
     private OnDownCallback mOnDownCallback = null;
+    private Boolean mCanScroll = true;
+
     // Listeners.
     private EventClickListener mEventClickListener;
     private EventLongPressListener mEventLongPressListener;
@@ -192,29 +194,18 @@ public class TimetableView extends View {
     private GestureDetector.SimpleOnGestureListener mGestureListener = new GestureDetector.SimpleOnGestureListener() {
         @Override
         public boolean onDown(MotionEvent e) {
-            goToNearestOrigin();
-            if (mOnDownCallback == null) return false;
-            Log.d("timetable", Float.toString(e.getX()) + "    " + Float.toString(TimetableView.this.getWidth() - e.getX()));
-            if (e.getX() < mDeadZoneWidth || TimetableView.this.getWidth() - e.getX() < mDeadZoneWidth){
-                // the down gesture is close to the screen edge, scroll parent view instead of the Timetable View
-                if (mOnDownCallback != null) {
-                    mOnDownCallback.onDown(true);
-                }
-                return false;
-            }
-            else {
-                if (mOnDownCallback != null) {
-                    mOnDownCallback.onDown(false);
-                }
-                return true;
-            }
+            return true;
         }
 
         @Override
         public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
             // Check if view is zoomed.
-            if (mIsZooming)
+            if (mIsZooming) {
+                if (mOnDownCallback != null) {
+                    mOnDownCallback.onDown(true);
+                }
                 return true;
+            }
 
             switch (mCurrentScrollDirection) {
                 case NONE: {
@@ -250,10 +241,27 @@ public class TimetableView extends View {
             switch (mCurrentScrollDirection) {
                 case LEFT:
                 case RIGHT:
+
+                    if (mOnDownCallback == null) return false;
+                    if (e1.getX() < mDeadZoneWidth || TimetableView.this.getWidth() - e1.getX() < mDeadZoneWidth){
+                        // the down gesture is close to the screen edge, scroll parent view instead of the Timetable View
+                        if (mOnDownCallback != null) {
+                            mOnDownCallback.onDown(true);
+                        }
+                        return false;
+                    }
+                    else {
+                        if (mOnDownCallback != null) {
+                            mOnDownCallback.onDown(false);
+                        }
+                    }
                     mCurrentOrigin.x -= distanceX * mXScrollingSpeed;
                     ViewCompat.postInvalidateOnAnimation(TimetableView.this);
                     break;
                 case VERTICAL:
+                    if (mOnDownCallback != null) {
+                        mOnDownCallback.onDown(true);
+                    }
                     mCurrentOrigin.y -= distanceY;
                     ViewCompat.postInvalidateOnAnimation(TimetableView.this);
                     break;
@@ -388,6 +396,7 @@ public class TimetableView extends View {
             mHourHeight = a.getDimensionPixelSize(R.styleable.WeekView_hourHeight, mHourHeight);
             mMinHourHeight = a.getDimensionPixelSize(R.styleable.WeekView_minHourHeight, mMinHourHeight);
             mEffectiveMinHourHeight = mMinHourHeight;
+            mCanScroll = a.getBoolean(R.styleable.WeekView_canScroll, mCanScroll);
             mMaxHourHeight = a.getDimensionPixelSize(R.styleable.WeekView_maxHourHeight, mMaxHourHeight);
             mTextSize = a.getDimensionPixelSize(R.styleable.WeekView_textSize, (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, mTextSize, context.getResources().getDisplayMetrics()));
             mHeaderColumnPadding = a.getDimensionPixelSize(R.styleable.WeekView_headerColumnPadding, mHeaderColumnPadding);
@@ -559,6 +568,8 @@ public class TimetableView extends View {
 
         // Draw the time column and all the axes/separators.
         drawTimeColumnAndAxes(canvas);
+
+        mDeadZoneWidth = mCanScroll? mDeadZoneWidth: TimetableView.this.getWidth();
     }
 
     private void calculateHeaderHeight(){
@@ -1418,7 +1429,11 @@ public class TimetableView extends View {
                 @Override
                 public String interpretDate(Calendar date) {
                     try {
-                        SimpleDateFormat sdf = mDayNameLength == LENGTH_SHORT ? new SimpleDateFormat("EEEEE M/dd", Locale.getDefault()) : new SimpleDateFormat("EEE M/dd", Locale.getDefault());
+                        SimpleDateFormat sdf;
+                        if (mCanScroll)
+                            sdf = mDayNameLength == LENGTH_SHORT ? new SimpleDateFormat("EEEEE M/dd", Locale.getDefault()) : new SimpleDateFormat("EEE M/dd", Locale.getDefault());
+                        else
+                            sdf = mDayNameLength == LENGTH_SHORT ? new SimpleDateFormat("EEEEE", Locale.getDefault()) : new SimpleDateFormat("EEE", Locale.getDefault());
                         sdf.setTimeZone(HKT);
                         return sdf.format(date.getTime()).toUpperCase();
                     } catch (Exception e) {
