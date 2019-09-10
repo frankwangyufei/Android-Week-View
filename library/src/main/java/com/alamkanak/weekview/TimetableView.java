@@ -201,9 +201,6 @@ public class TimetableView extends View {
         public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
             // Check if view is zoomed.
             if (mIsZooming) {
-                if (mOnDownCallback != null) {
-                    mOnDownCallback.onDown(true);
-                }
                 return true;
             }
 
@@ -358,7 +355,7 @@ public class TimetableView extends View {
         if(mBoundaryHitListener == null) return;
         mBoundaryHitListener.onLeftBoundaryHit(false);
         mBoundaryHitListener.onRightBoundaryHit(false);
-        mBoundaryHitListener.onTopBoundaryHit(mCurrentScrollDirection == Direction.VERTICAL);
+        mBoundaryHitListener.onTopBoundaryHit(mCurrentOrigin.y >= 0);
         mBoundaryHitListener.onBottomBoundaryHit(mCurrentOrigin.y <= getMinY());
     }
 
