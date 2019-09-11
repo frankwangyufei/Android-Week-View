@@ -23,7 +23,6 @@ import android.text.TextUtils;
 import android.text.format.DateFormat;
 import android.text.style.StyleSpan;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.GestureDetector;
 import android.view.HapticFeedbackConstants;
@@ -178,6 +177,7 @@ public class TimetableView extends View {
     }
     private OnDownCallback mOnDownCallback = null;
     private Boolean mCanScroll = true;
+    private Integer mForceFirstDay = -1;
 
     // Listeners.
     private EventClickListener mEventClickListener;
@@ -392,8 +392,11 @@ public class TimetableView extends View {
             mFirstDayOfWeek = a.getInteger(R.styleable.WeekView_firstDayOfWeek, mFirstDayOfWeek);
             mHourHeight = a.getDimensionPixelSize(R.styleable.WeekView_hourHeight, mHourHeight);
             mMinHourHeight = a.getDimensionPixelSize(R.styleable.WeekView_minHourHeight, mMinHourHeight);
+            startHour = a.getInteger(R.styleable.WeekView_startHour, startHour);
+            endHour = a.getInteger(R.styleable.WeekView_endHour, endHour);
             mEffectiveMinHourHeight = mMinHourHeight;
             mCanScroll = a.getBoolean(R.styleable.WeekView_canScroll, mCanScroll);
+            mForceFirstDay = a.getInt(R.styleable.WeekView_forceFirstDay, mForceFirstDay);
             mMaxHourHeight = a.getDimensionPixelSize(R.styleable.WeekView_maxHourHeight, mMaxHourHeight);
             mTextSize = a.getDimensionPixelSize(R.styleable.WeekView_textSize, (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, mTextSize, context.getResources().getDisplayMetrics()));
             mHeaderColumnPadding = a.getDimensionPixelSize(R.styleable.WeekView_headerColumnPadding, mHeaderColumnPadding);
@@ -2066,6 +2069,14 @@ public class TimetableView extends View {
      * Show this week on the week view
      */
     public void goToThisWeek() {
+        if (mForceFirstDay != -1){
+            Calendar cal = Calendar.getInstance();
+            Long millis = mForceFirstDay.longValue() * 1000;
+            cal.setTimeInMillis(millis);
+            goToDate(cal);
+            invalidate();
+            return;
+        }
         if(today().get(Calendar.DAY_OF_WEEK) != mFirstDayOfWeek && mShowFirstDayOfWeekFirst) {
             if(mNumberOfVisibleDays >= 5 || today().get(Calendar.DAY_OF_WEEK) == Calendar.SUNDAY) {
                 int difference = (today().get(Calendar.DAY_OF_WEEK) - mFirstDayOfWeek);

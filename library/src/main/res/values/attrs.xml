@@ -10,11 +10,14 @@
             <enum name="friday" value="6"/>
             <enum name="saturday" value="7"/>
         </attr>
+        <attr name="startHour" format="integer"/>
+        <attr name="endHour" format="integer"/>
         <attr name="hourHeight" format="dimension"/>
         <attr name="minHourHeight" format="dimension"/>
         <attr name="maxHourHeight" format="dimension"/>
         <attr name="textSize" format="dimension"/>
         <attr name="canScroll" format="boolean"/>
+        <attr name="forceFirstDay" format="integer"/>
         <attr name="eventTextSize" format="dimension"/>
         <attr name="headerColumnPadding" format="dimension"/>
         <attr name="headerRowPadding" format="dimension"/>
