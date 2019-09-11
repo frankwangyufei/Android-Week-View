@@ -663,9 +663,10 @@ public class TimetableView extends View {
             mNewHourHeight = -1;
         }
 
+        int totalHours = endHour - startHour; // the y origin should be given this amount of deadzone to prevent small jiggle when zoomed out max due to hourheight being integers
         // If the new mCurrentOrigin.y is invalid, make it valid.
-        if (mCurrentOrigin.y < getHeight() - mHourHeight * (endHour - startHour) - mHeaderHeight - mHeaderRowPadding * 2 - mHeaderMarginBottom - mTimeTextHeight/2)
-            mCurrentOrigin.y = getHeight() - mHourHeight * (endHour - startHour) - mHeaderHeight - mHeaderRowPadding * 2 - mHeaderMarginBottom - mTimeTextHeight/2;
+        if (mCurrentOrigin.y < getHeight() - mHourHeight * (endHour - startHour) - mHeaderHeight - mHeaderRowPadding * 2 - mHeaderMarginBottom - mTimeTextHeight/2 + totalHours)
+            mCurrentOrigin.y = getHeight() - mHourHeight * (endHour - startHour) - mHeaderHeight - mHeaderRowPadding * 2 - mHeaderMarginBottom - mTimeTextHeight/2 + totalHours;
 
         // Don't put an "else if" because it will trigger a glitch when completely zoomed out and
         // scrolling vertically.
