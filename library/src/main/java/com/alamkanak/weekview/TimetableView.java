@@ -1980,7 +1980,8 @@ public class TimetableView extends View {
 
         mIsZooming = event.getPointerCount() >= 2;
 
-        mScaleDetector.onTouchEvent(event);
+        if (mIsZooming)
+            mScaleDetector.onTouchEvent(event);
         boolean val = mGestureDetector.onTouchEvent(event);
 
         // Check after call of mGestureDetector, so mCurrentFlingDirection and mCurrentScrollDirection are set.
