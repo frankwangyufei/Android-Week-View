@@ -199,6 +199,7 @@ public class TimetableView extends View {
 
         @Override
         public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
+
             // Check if view is zoomed.
             if (mIsZooming) {
                 return true;
@@ -241,6 +242,7 @@ public class TimetableView extends View {
 
                     if (mOnDownCallback == null) return false;
                     if (e1.getX() < mDeadZoneWidth || TimetableView.this.getWidth() - e1.getX() < mDeadZoneWidth){
+                        mCurrentScrollDirection = Direction.NONE;
                         // the down gesture is close to the screen edge, scroll parent view instead of the Timetable View
                         if (mOnDownCallback != null) {
                             mOnDownCallback.onDown(true);
@@ -268,6 +270,9 @@ public class TimetableView extends View {
 
         @Override
         public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+            if (e1.getX() < mDeadZoneWidth || TimetableView.this.getWidth() - e1.getX() < mDeadZoneWidth){
+                return false;
+            }
             if (mIsZooming)
                 return true;
 
