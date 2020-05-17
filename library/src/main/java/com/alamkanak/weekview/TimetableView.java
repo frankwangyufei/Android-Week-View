@@ -1435,6 +1435,12 @@ public class TimetableView extends View {
         invalidate();
     }
 
+    public void setStartHour(int hour) {
+        this.startHour = hour;
+        invalidate();
+    }
+
+
     /**
      * Get the interpreter which provides the text to show in the header column and the header row.
      * @return The date, time interpreter.
