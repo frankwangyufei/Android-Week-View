@@ -1,4 +1,4 @@
-package com.alamkanak.weekview.sample;
+package com.alamkanak.weekviewold.sample;
 
 import android.widget.Toast;
 
